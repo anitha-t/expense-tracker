@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Keep the example file so others know what vars are needed
+!.env.example
+!.env.test.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Test coverage
+coverage/
+
+# Docker volumes (if mounted locally)
+mysql_data/
