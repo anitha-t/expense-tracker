@@ -33,3 +33,4 @@ coverage/
 
 # Docker volumes (if mounted locally)
 mysql_data/
+backend/.env.test
