@@ -52,7 +52,7 @@ export const CreateExpenseSchema = z.object({
   currency: z.string().length(3).toUpperCase(),
   category: ExpenseCategory,
   description: z.string().min(3).max(500),
-  receiptUrl: z.string().url().optional(),
+  receiptUrl: z.string().optional(),
   idempotencyKey: z.string().uuid('idempotencyKey must be a UUID').optional(),
 });
 export type CreateExpenseInput = z.infer<typeof CreateExpenseSchema>;

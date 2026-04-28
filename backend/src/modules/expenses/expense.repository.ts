@@ -128,6 +128,60 @@ export class ExpenseRepository {
     );
   }
 
+  async getWeeklySummaryData(userId: string): Promise<{
+    totalAmount: number;
+    currency: string;
+    expenseCount: number;
+    byCategory: { category: string; total: number; count: number }[];
+    largestExpense: { description: string; amount: number; category: string } | null;
+    statusBreakdown: { status: string; count: number }[];
+  }> {
+    const [totalsRows] = await this.exec<(RowDataPacket & { total: number; count: number; currency: string })[]>(
+      `SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count, COALESCE(MAX(currency), 'USD') AS currency
+       FROM expenses
+       WHERE user_id = :userId AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`,
+      { userId }
+    );
+
+    const [categoryRows] = await this.exec<(RowDataPacket & { category: string; total: number; count: number })[]>(
+      `SELECT category, SUM(amount) AS total, COUNT(*) AS count
+       FROM expenses
+       WHERE user_id = :userId AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+       GROUP BY category ORDER BY total DESC`,
+      { userId }
+    );
+
+    const [largestRows] = await this.exec<(ExpenseRow & RowDataPacket)[]>(
+      `SELECT description, amount, category FROM expenses
+       WHERE user_id = :userId AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+       ORDER BY amount DESC LIMIT 1`,
+      { userId }
+    );
+
+    const [statusRows] = await this.exec<(RowDataPacket & { status: string; count: number })[]>(
+      `SELECT status, COUNT(*) AS count
+       FROM expenses
+       WHERE user_id = :userId AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+       GROUP BY status`,
+      { userId }
+    );
+
+    return {
+      totalAmount: Number(totalsRows[0]?.total ?? 0),
+      expenseCount: Number(totalsRows[0]?.count ?? 0),
+      currency: totalsRows[0]?.currency ?? 'USD',
+      byCategory: categoryRows.map((r) => ({
+        category: r.category,
+        total: Number(r.total),
+        count: Number(r.count),
+      })),
+      largestExpense: largestRows[0]
+        ? { description: largestRows[0].description, amount: Number(largestRows[0].amount), category: largestRows[0].category }
+        : null,
+      statusBreakdown: statusRows.map((r) => ({ status: r.status, count: Number(r.count) })),
+    };
+  }
+
   async delete(id: string, userId: string): Promise<boolean> {
     const [result] = await this.exec<ResultSetHeader>(
       `DELETE FROM expenses WHERE id = :id AND user_id = :userId AND status = 'draft'`,

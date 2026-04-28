@@ -38,6 +38,21 @@ export const authApi = {
     http.post('/auth/logout', { refreshToken }),
 };
 
+// --- Receipt upload ---
+export const receiptsApi = {
+  upload: (file: File, onProgress?: (pct: number) => void) => {
+    const form = new FormData();
+    form.append('receipt', file);
+    return http
+      .post<{ url: string }>('/expenses/receipts', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) =>
+          onProgress?.(Math.round((e.loaded / (e.total ?? e.loaded)) * 100)),
+      })
+      .then((r) => r.data);
+  },
+};
+
 // --- Expenses ---
 export const expensesApi = {
   list: (params: { page?: number; limit?: number; status?: string; category?: string }) =>

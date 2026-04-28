@@ -1,19 +1,18 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { EXPENSE_CATEGORIES, CreateExpenseInput } from '@/types';
+import { ReceiptUpload } from './ReceiptUpload';
 
 const schema = z.object({
   amount: z.coerce.number().positive('Must be greater than 0').max(1_000_000),
   currency: z.string().length(3).toUpperCase(),
   category: z.enum(EXPENSE_CATEGORIES),
   description: z.string().min(3, 'At least 3 characters').max(500),
-  // preprocess: HTML inputs always return a string, even when empty.
-  // Convert '' → undefined so .optional() allows it; non-empty values must be a valid URL.
-  receiptUrl: z.preprocess(
-    (val) => (val === '' ? undefined : val),
-    z.string().url('Must be a valid URL').optional()
-  ),
+  // ReceiptUpload sets this to a /uploads/... path after a successful upload,
+  // or undefined when cleared. No URL format check needed here — the component
+  // only writes a value once the backend confirms the file was stored.
+  receiptUrl: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -32,7 +31,7 @@ const labelStyle: React.CSSProperties = { display: 'block', marginBottom: 4, fon
 const errorStyle: React.CSSProperties = { color: '#dc2626', fontSize: 12, marginTop: 4 };
 
 export function ExpenseForm({ onSubmit, isLoading, error }: Props) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { currency: 'USD' },
   });
@@ -82,10 +81,16 @@ export function ExpenseForm({ onSubmit, isLoading, error }: Props) {
       </div>
 
       <div>
-        <label htmlFor="receiptUrl" style={labelStyle}>
-          Receipt URL <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
+        <label style={labelStyle}>
+          Receipt <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional — required to submit)</span>
         </label>
-        <input id="receiptUrl" type="text" style={inputStyle} placeholder="https://..." {...register('receiptUrl')} />
+        <Controller
+          name="receiptUrl"
+          control={control}
+          render={({ field }) => (
+            <ReceiptUpload value={field.value} onChange={field.onChange} />
+          )}
+        />
         {errors.receiptUrl && <p style={errorStyle}>{errors.receiptUrl.message}</p>}
       </div>
 

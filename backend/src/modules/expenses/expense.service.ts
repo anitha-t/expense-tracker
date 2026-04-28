@@ -1,3 +1,4 @@
+import OpenAI from 'openai';
 import { ExpenseRepository } from './expense.repository';
 import {
   Expense, CreateExpenseInput, UpdateExpenseInput,
@@ -6,6 +7,7 @@ import {
 import { cacheGet, cacheSet, cacheDelete, setIdempotencyKey } from '../../config/redis';
 import { AppError } from '../../middleware/errorHandler';
 import { logger } from '../../utils/logger';
+import { env } from '../../config/env';
 
 const LIST_CACHE_TTL = 60; // seconds
 
@@ -113,6 +115,78 @@ export class ExpenseService {
 
     await cacheDelete(`expense:${id}`);
     await this.invalidateUserCache(userId);
+  }
+
+  async getWeeklySummary(userId: string): Promise<{ summary: string; data: object }> {
+    const { apiKey, baseURL, model } = this.resolveAIProvider();
+
+    const cacheKey = `weekly-summary:${userId}`;
+    const cached = await cacheGet<{ summary: string; data: object }>(cacheKey);
+    if (cached) return cached;
+
+    const data = await this.repo.getWeeklySummaryData(userId);
+
+    if (data.expenseCount === 0) {
+      return { summary: 'You have no expenses recorded in the past 7 days.', data };
+    }
+
+    const categoryLines = data.byCategory
+      .map((c) => `  - ${c.category}: ${data.currency} ${c.total.toFixed(2)} across ${c.count} expense(s)`)
+      .join('\n');
+
+    const statusLines = data.statusBreakdown
+      .map((s) => `  - ${s.count} ${s.status}`)
+      .join('\n');
+
+    const prompt = `You are a helpful financial assistant. Generate a concise, friendly weekly spending summary in 3–4 sentences based on this data:
+
+Total spent: ${data.currency} ${data.totalAmount.toFixed(2)} across ${data.expenseCount} expense(s)
+
+Breakdown by category:
+${categoryLines}
+
+Status breakdown:
+${statusLines}
+
+${data.largestExpense ? `Largest single expense: ${data.currency} ${data.largestExpense.amount.toFixed(2)} for "${data.largestExpense.description}" (${data.largestExpense.category})` : ''}
+
+Write in second person ("You spent…"). Mention the top spending category, highlight the largest expense if notable, and end with one practical observation or tip.`;
+
+    try {
+      const client = new OpenAI({ apiKey, baseURL });
+      const completion = await client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200,
+        temperature: 0.7,
+      });
+
+      const summary = completion.choices[0]?.message?.content?.trim() ?? 'Unable to generate summary.';
+      logger.info({ msg: 'Weekly summary generated', userId, expenseCount: data.expenseCount, model });
+
+      const result = { summary, data };
+      await cacheSet(cacheKey, result, 3600);
+      return result;
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status;
+      if (status === 429) throw new AppError(503, 'AI provider quota exceeded — add billing or switch to GROQ_API_KEY');
+      if (status === 401) throw new AppError(503, 'AI provider key is invalid — check GROQ_API_KEY or OPENAI_API_KEY');
+      throw err;
+    }
+  }
+
+  private resolveAIProvider(): { apiKey: string; baseURL?: string; model: string } {
+    if (env.GROQ_API_KEY) {
+      return {
+        apiKey: env.GROQ_API_KEY,
+        baseURL: 'https://api.groq.com/openai/v1',
+        model: 'llama-3.1-8b-instant',
+      };
+    }
+    if (env.OPENAI_API_KEY) {
+      return { apiKey: env.OPENAI_API_KEY, model: 'gpt-3.5-turbo' };
+    }
+    throw new AppError(503, 'Weekly summary is not configured — set GROQ_API_KEY (free) or OPENAI_API_KEY in .env');
   }
 
   private async invalidateUserCache(userId: string): Promise<void> {

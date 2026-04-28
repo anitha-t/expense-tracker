@@ -44,4 +44,9 @@ export class ExpenseController {
     await this.service.deleteExpense(req.params.id, req.userId);
     res.status(204).send();
   };
+
+  weeklySummary = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.service.getWeeklySummary(req.userId);
+    res.json(result);
+  };
 }

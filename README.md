@@ -73,6 +73,7 @@ Auth endpoints are rate-limited independently (stricter than the global limit).
 
 | Method | Path | Role | Description |
 |---|---|---|---|
+| `GET` | `/expenses/summary/weekly` | any | Natural-language spending summary for the past 7 days |
 | `GET` | `/expenses` | any | List own expenses (paginated, filterable) |
 | `POST` | `/expenses` | any | Create a draft expense |
 | `GET` | `/expenses/:id` | any* | Get one expense |

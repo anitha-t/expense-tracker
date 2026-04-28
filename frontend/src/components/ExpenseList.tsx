@@ -58,10 +58,18 @@ export function ExpenseList({ expenses, userRole, onSubmit, onApprove, onReject,
             {/* Employee actions */}
             {exp.status === 'draft' && userRole === 'employee' && (
               <>
-                <button style={btnStyle('#2563eb')} onClick={() => onSubmit(exp.id)}>
-                  Submit
+                <button
+                  style={{ ...btnStyle('#2563eb'), opacity: isActioning === exp.id ? 0.5 : 1, cursor: isActioning === exp.id ? 'not-allowed' : 'pointer' }}
+                  disabled={isActioning === exp.id}
+                  onClick={() => onSubmit(exp.id)}
+                >
+                  {isActioning === exp.id ? 'Submitting…' : 'Submit'}
                 </button>
-                <button style={btnStyle('#dc2626')} onClick={() => onDelete(exp.id)}>
+                <button
+                  style={{ ...btnStyle('#dc2626'), opacity: isActioning === exp.id ? 0.5 : 1, cursor: isActioning === exp.id ? 'not-allowed' : 'pointer' }}
+                  disabled={isActioning === exp.id}
+                  onClick={() => onDelete(exp.id)}
+                >
                   Delete
                 </button>
               </>
@@ -70,11 +78,19 @@ export function ExpenseList({ expenses, userRole, onSubmit, onApprove, onReject,
             {/* Manager/admin actions */}
             {exp.status === 'submitted' && (userRole === 'manager' || userRole === 'admin') && (
               <>
-                <button style={btnStyle('#16a34a')} onClick={() => onApprove(exp.id)}>
-                  Approve
+                <button
+                  style={{ ...btnStyle('#16a34a'), opacity: isActioning === exp.id ? 0.5 : 1, cursor: isActioning === exp.id ? 'not-allowed' : 'pointer' }}
+                  disabled={isActioning === exp.id}
+                  onClick={() => onApprove(exp.id)}
+                >
+                  {isActioning === exp.id ? 'Approving…' : 'Approve'}
                 </button>
-                <button style={btnStyle('#dc2626')} onClick={() => onReject(exp.id)}>
-                  Reject
+                <button
+                  style={{ ...btnStyle('#dc2626'), opacity: isActioning === exp.id ? 0.5 : 1, cursor: isActioning === exp.id ? 'not-allowed' : 'pointer' }}
+                  disabled={isActioning === exp.id}
+                  onClick={() => onReject(exp.id)}
+                >
+                  {isActioning === exp.id ? 'Rejecting…' : 'Reject'}
                 </button>
               </>
             )}

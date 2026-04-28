@@ -36,6 +36,10 @@ const envSchema = z.object({
   // AWS (used by S3 for receipt uploads)
   AWS_REGION: z.string().default('us-east-1'),
   AWS_S3_BUCKET: z.string().optional(),
+
+  // AI summary — set one of these. Groq is free; OpenAI requires billing.
+  OPENAI_API_KEY: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

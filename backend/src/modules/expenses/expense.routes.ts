@@ -17,6 +17,7 @@ const IdParam = z.object({ id: z.string().uuid() });
 // All expense routes require authentication
 router.use(authenticate);
 
+router.get('/summary/weekly', controller.weeklySummary);
 router.get('/', validate({ query: ExpenseQuerySchema }), controller.list);
 router.get('/:id', validate({ params: IdParam }), controller.getById);
 

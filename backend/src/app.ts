@@ -1,4 +1,5 @@
 import 'express-async-errors'; // Patches Express to forward async throws to error handler
+import path from 'path';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -8,6 +9,7 @@ import { env } from './config/env';
 import { globalRateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import expenseRoutes from './modules/expenses/expense.routes';
+import receiptRoutes from './modules/expenses/receipt.routes';
 import authRoutes from './modules/auth/auth.routes';
 import { checkDatabaseHealth } from './config/database';
 import { checkRedisHealth } from './config/redis';
@@ -65,9 +67,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve uploaded receipts as static files — before API routes
+app.use('/uploads', express.static(path.resolve('uploads')));
+
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
+app.use('/api/v1/expenses/receipts', receiptRoutes);
 
 // Health check — used by ECS/ALB target group and Kubernetes liveness probes
 app.get('/health', async (_req, res) => {
